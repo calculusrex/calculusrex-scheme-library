@@ -324,7 +324,7 @@
   (let ((parse-row (row-parser-- sep delim))
 	(collector
 	 (λ (rows row-lengths)		; columns too maybe
-	   `((rows . ,rows)
+	   `((rows . ,(cdr rows))
 	     (row-lengths . ,row-lengths)))))
     (λ (port)
       (let recur ((collector collector))
@@ -385,7 +385,6 @@
       (call-with-input-file fname proc))))
 
 
-
 ;; testing ----------------
 
 ;; (define csv-fnames
@@ -406,8 +405,7 @@
   (open-input-file
    csv-fname))
 
-
-(define (csv-data)
+(define csv-data
   (read-csv-- csv-fname #\, #\newline))
 
 ;; (define parse-row (row-parser #\, #\newline))
