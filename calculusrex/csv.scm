@@ -203,6 +203,7 @@
 ;; 			vals)
 ;; 		  (1+ val-n))))))))))
 
+
 (define (row-parser sep delim)
   (let ((parse-value (value-parser sep delim))
 	(imminent-delim?
@@ -219,6 +220,30 @@
 	      (else
 	       (cons (parse-value port)
 		     (recur))))))))
+
+
+(define (row-parser-- sep delim)
+  (let ((parse-value (value-parser sep delim))
+	(imminent-delim?
+	 (λ (port)
+	   (eqv? delim (peek-char port))))
+	(end-of-the-line '('() 0)))
+    (λ (port)
+      (let recur ((collector (λ (values n-values)
+			       (cons values n-values))))
+	(cond ((eof-object? (peek-char port))
+	       (apply collector end-of-the-line))
+	      ((imminent-delim? port)
+	       (begin
+		 (read-char port)
+		 (apply collector end-of-the-line)))
+	      (else
+	       (recur
+		(λ (values n-values)
+		  (collector
+		   (cons (parse-value port)
+			 values)
+		   (1+ n-values))))))))))
 
 (define (csv-parser sep delim)
   (let ((parse-row (row-parser sep delim)))
