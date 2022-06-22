@@ -1,5 +1,5 @@
 (define-module (calculusrex list)
-  :export (in
+  :export (in?
 	   range
 	   transpose
 	   zip
@@ -13,11 +13,11 @@
 
 (use-modules (ice-9 regex))
 
-(define (in x xs)
+(define (in? x xs)
   (cond ((null? xs) #f)
 	((equal? x (car xs)) #t)
 	(else
-	 (in x (cdr xs)))))
+	 (in? x (cdr xs)))))
 
 (define (path-join strings)
   (string-join strings "/"))

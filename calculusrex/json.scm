@@ -8,7 +8,11 @@
 
 (use-modules (ice-9 textual-ports))
 
-(load "list.scm")
+;; (load "list.scm")
+
+(use-modules (calculusrex list)
+	     (calculusrex error))
+
 
 ;; -------------------------------------------------------------
 ;; - PARSING
@@ -248,7 +252,8 @@
 (define (parse-value datum)
   (let loop ((pxf predicates-x-parsing-functions)
 	     (datum (consume-whitespace datum)))
-    (if (null? pxf) (error "malformed or unsuported data feed")
+    (if (null? pxf) (screaming-error
+		     "malformed or unsuported data feed")
 	(let ((pair (car pxf)))
 	  (let ((predicate (car pair))
 		(pfunction (cdr pair)))
@@ -331,7 +336,8 @@
 
 (define (format-value data)
   (let loop ((pxf predicates-x-formatting-functions))
-    (if (null? pxf) (error "malformed or unsuported data structure")
+    (if (null? pxf) (screamings-error
+		     "malformed or unsuported data structure")
 	(let ((pair (car pxf)))
 	  (let ((predicate (car pair))
 		(pfunction (cdr pair)))
@@ -351,8 +357,8 @@
 ;; - TESTING
 
 
-;; (define tree (read-json-file "json_sample_2.json"))
+(define tree (read-json-file "json_sample_2.json"))
 
-;; (define p (open-file "json_sample_2.json" "r"))
-;; (define string (get-string-all p))
-;; (define tree (parse-json-string string))
+(define p (open-file "json_sample_2.json" "r"))
+(define string (get-string-all p))
+(define tree (parse-json-string string))

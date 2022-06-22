@@ -14,6 +14,8 @@
 
 (use-modules (calculusrex string)
 	     (calculusrex list)
+	     (calculusrex numbers)
+	     (calculusrex error)
 	     ;; (ice-9 rdelim)
 	     )
 
@@ -82,7 +84,7 @@
 
 (define (new-value-predicate sep)
   (λ (port)
-    (eqv? sep (peek-chr port))))
+    (eqv? sep (peek-char port))))
 
 (define (double-quote? char)
   (eqv? char #\"))
@@ -94,6 +96,10 @@
 (define (digit? char)
   (char-set-contains? char-set:digit
 		      char))
+
+(define (imminent-number? char)
+  (or (in? char (string->list "./eE-+i%"))
+      (digit? char)))
 
 (define (parse-string port)
   (read-char port) ;; to get rid of the doublequote char
@@ -175,10 +181,11 @@
 			(cond
 			 ((double-quote? init-char)
 			  parse-string)
-			 ((alphabetic? init-char)
-			  (symbol-parser sep))
-			 ((digit? init-char) (number-parser
-					      sep)))))
+			 ((imminent-number? init-char)
+			  (number-parser
+			   sep))
+			 (else
+			  (symbol-parser sep)))))
 		   (parse port))))
 	    (consume-whitespace port)
 	    value))))))
@@ -222,28 +229,74 @@
 		     (recur))))))))
 
 
+;; (define (row-parser sep delim)
+;;   (let ((parse-value (value-parser sep delim))
+;; 	(imminent-delim?
+;; 	 (λ (port)
+;; 	   (eqv? delim (peek-char port)))))
+;;     (λ (port)
+;;       (let recur ()
+;; 	(cond ((eof-object? (peek-char port))
+;; 	       '())
+;; 	      ((imminent-delim? port)
+;; 	       (begin
+;; 		 (read-char port)
+;; 		 '()))
+;; 	      (else
+;; 	       (cons (let ((value (parse-value port)))
+;; 		       (display value) (display " ")
+;; 		       value) ;; DEBUG
+;; 		     (recur))))))))
+
+
+
+(define (row-parser- sep delim)
+  (let ((parse-value (value-parser sep delim))
+	(imminent-delim?
+	 (λ (port)
+	   (eqv? delim (peek-char port))))
+	(collector
+	 (λ (values) values)))
+    (λ (port)
+      (let recur ((collector collector))
+	(cond ((eof-object? (peek-char port))
+	       (collector '()))
+	      ((imminent-delim? port)
+	       (begin
+		 (read-char port)
+		 (collector '())))
+	      (else
+	       (let ((value (parse-value port)))
+		 (recur
+		  (λ (values)
+		    (collector 
+		     (cons value
+			   values)))))))))))
+
+
 (define (row-parser-- sep delim)
   (let ((parse-value (value-parser sep delim))
 	(imminent-delim?
 	 (λ (port)
 	   (eqv? delim (peek-char port))))
-	(end-of-the-line '('() 0)))
+	(collector
+	 (λ (values n-values) (cons values n-values))))
     (λ (port)
-      (let recur ((collector (λ (values n-values)
-			       (cons values n-values))))
+      (let recur ((collector collector))
 	(cond ((eof-object? (peek-char port))
-	       (apply collector end-of-the-line))
+	       (collector '() 0))
 	      ((imminent-delim? port)
 	       (begin
 		 (read-char port)
-		 (apply collector end-of-the-line)))
+		 (collector '() 0)))
 	      (else
-	       (recur
-		(λ (values n-values)
-		  (collector
-		   (cons (parse-value port)
-			 values)
-		   (1+ n-values))))))))))
+	       (let ((value (parse-value port)))
+		 (recur
+		  (λ (values n-values)
+		    (collector
+		     (cons value values)
+		     (1+ n-values)))))))))))
+
 
 (define (csv-parser sep delim)
   (let ((parse-row (row-parser sep delim)))
@@ -253,15 +306,112 @@
 	    '()
 	    (cons (parse-row port)
 		  (recur)))))))
+
+
+;; (define (csv-parser sep delim)
+;;   (let ((parse-row (row-parser sep delim)))
+;;     (λ (port)
+;;       (let recur ()
+;; 	(if (eof-object? (peek-char port))
+;; 	    '()
+;; 	    (cons (let ((values (parse-row port)))
+;; 		    (display values) (newline)
+;; 		    values) ; DEBUG
+;; 		  (recur)))))))
  
+
+(define (csv-parser-- sep delim)
+  (let ((parse-row (row-parser-- sep delim))
+	(collector
+	 (λ (rows row-lengths)		; columns too maybe
+	   `((rows . ,rows)
+	     (row-lengths . ,row-lengths)))))
+    (λ (port)
+      (let recur ((collector collector))
+	(if (eof-object? (peek-char port))
+	    (collector '() '())
+	    (let ((row-data (parse-row port)))
+	      (let ((values (car row-data))
+		    (n-values (cdr row-data)))
+		(recur
+		 (λ (rows row-lengths)
+		   (collector
+		    (cons values rows)	; rows
+		    (cons n-values row-lengths)))))))))))
+
+
+(define (read-csv fname sep delim)
+  (let ((parse-csv (csv-parser sep delim)))
+    (let ((proc
+	   (λ (port)
+	     (parse-csv port))))
+      (call-with-input-file fname proc))))
+	       
+
+;; (define (read-csv-- fname sep delim)
+;;   (let ((parse-csv (csv-parser-- sep delim)))
+;;     (let ((proc
+;; 	   (λ (port)
+;; 	     (let ((csv-data (parse-csv port)))
+;; 	       (let ((rows
+;; 		      (assq-ref csv-data 'rows))
+;; 		     (row-lengths
+;; 		      (assq-ref csv-data 'row-lengths)))
+;; 		 (if (not (all-equal? row-lengths))
+;; 		     (error "rows of unequal size")
+;; 		     (let ((header (car rows))
+;; 			   (columns (transpose rows)))
+;; 		       `((header . ,header)
+;; 			 (columns . ,columns)
+;; 			 (rows . ,rows)))))))))
+;;       (call-with-input-file fname proc))))
+
+(define (read-csv-- fname sep delim)
+  (let ((parse-csv (csv-parser-- sep delim)))
+    (let ((proc
+	   (λ (port)
+	     (let ((csv-data (parse-csv port)))
+	       (let ((rows
+		      (assq-ref csv-data 'rows))
+		     (row-lengths
+		      (assq-ref csv-data 'row-lengths)))
+		 (if (not (all-equal? row-lengths))
+		     (error "rows of unequal size")
+		     (let ((header (car rows))
+			   (columns (transpose rows)))
+		       `((header . ,header)
+			 (columns . ,columns)
+			 (rows . ,rows)))))))))
+      (call-with-input-file fname proc))))
+
+
+
 ;; testing ----------------
+
+;; (define csv-fnames
+;;   (let ((cwd (getcwd))
+;; 	(folder "date-test-saga/ardeleanu--20-06-2022")
+;; 	(articole "intrari_articole_ardeleanu__20_06_2022.csv")
+;; 	(facturi "intrari_facturi_ardeleanu__20_06_2022.csv"))
+;;     '((articole . ,(string-join (list folder articole) "/"))
+;;       (facturi . ,(string-join (list folder facturi) "/")))))
+
+
+(define csv-fname
+  "date-test-saga/ardeleanu--20-06-2022/intrari_articole_ardeleanu__20_06_2022.csv")
+
+;; (define csv-fname "test-csv.csv")
 
 (define test-port
   (open-input-file
-   "test-csv.csv"))
+   csv-fname))
 
-(define parse-row (row-parser #\, #\newline))
-;; (display (parse-row test-port))
+
+(define (csv-data)
+  (read-csv-- csv-fname #\, #\newline))
+
+;; (define parse-row (row-parser #\, #\newline))
+;; ;; (display (parse-row test-port))
 
 
 ;; (define (predicates-x-parsers sep delim
