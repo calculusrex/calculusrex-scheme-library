@@ -1,8 +1,0 @@
-
-
-
-(define (path-join strings)
-  (string-join
-   (list folder--date-saga
-	 strings
-   "/")))

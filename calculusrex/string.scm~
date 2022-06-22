@@ -1,4 +1,0 @@
-(define-module (calculusrex string)
-  :export (string-strip))
-
-(define* (string-strip strng #:optional (chars)
