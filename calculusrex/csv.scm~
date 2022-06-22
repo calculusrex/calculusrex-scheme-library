@@ -1,0 +1,118 @@
+(define-module (calculusrex csv)
+  :export (read-csv
+	   ref
+	   df-header
+	   df-rows
+	   row-at-index
+	   df-columns
+	   column-at-key
+	   value-at-key))
+;; 	   row-at-value))
+
+;; (load "/home/feral/.guile")
+
+(use-modules (ice-9 rdelim)
+	     (calculusrex string)
+	     (calculusrex list))
+
+(use-modules (calculusrex string))
+
+(define* (read-csv fname
+		   #:optional
+		   (sep #\,)
+		   (strip-string-quotation #t)
+		   (header-present #t))
+  (call-with-input-file fname
+    (λ (file-port)
+      (let ((split-line
+	     (λ (cs)
+	       (let ((elements (string-split cs (λ (c) (eq? c sep)))))
+		 (if strip-string-quotation
+		     (map (λ (element)
+			    (string-strip
+			     element #:additional-chars '(#\")))
+			  elements)
+		     elements)))))
+	(let* ((header
+		(if header-present
+		    (split-line
+		     (read-line file-port))
+		    '()))
+	       (columns (transpose
+			 (cons (map string->symbol header)
+			       (let recur ()
+				 (if (eof-object? (peek-char file-port))
+				     '()
+				     (cons (split-line (read-line file-port))
+					   (recur))))))))
+	  `((header . ,(map string->symbol header))
+	    (columns . ,columns)))))))
+
+
+
+
+(define (df-header df)
+  (assq-ref df 'header))
+
+(define (df-rows df)
+  (cdr (transpose (assq-ref df 'columns))))
+
+(define (row-at-index df id)
+  (list-ref (df-rows df) id))
+
+(define (df-columns df)
+  (assq-ref df 'columns))
+
+(define (column-at-key df key)
+  (assq-ref (df-columns df) key))
+
+(define (value-at-key df row column-key)
+  (let recur ((columns (assq-ref df 'header))
+	      (row row))
+    (let ((key (car columns))
+	  (value (car row)))
+      (cond ((null? columns) #f)
+	    ((eq? key column-key)
+	     value)
+	    (else (recur (cdr columns)
+			 (cdr row)))))))
+
+;; (define (row-at-value df column value)
+;;   (let recur ((rows (transpose (assq-ref df 'rows))))
+;;     (cond ((null? rows) #f)
+;; 	  ((eq? 
+
+
+
+
+;; TESTING ------------------------------------------------
+
+(define df
+  (let* ((folder--date-saga "/home/feral/engineering/autoconta/transfer_date_mircea")
+	 (fnames--date-saga
+	  `((articole
+	     . ,(string-join
+		 `(,folder--date-saga "intrari_articole_ardeleanu__20_06_2022.csv")
+		 "/"))
+	    (facturi
+	     . ,(string-join
+		 `(,folder--date-saga "intrari_facturi_ardeleanu__20_06_2022.csv")
+		 "/")))))
+    (read-csv (assq-ref fnames--date-saga 'articole))))
+
+
+;; (car (df-rows df))
+;; (assq-ref (df-columns df) 'pret_vanz)
+;; (row-at-index df 0)
+;; (df-header df)
+;; (column-at-key df 'pret_vanz)
+;; (value-at-key df
+;; 	      (row-at-index df 0)
+;; 	      'pret_vanz)
+	      
+
+;; csv-lines
+
+;; (car (car (assq-ref csv-lines 'rows)))
+;; (assq-ref (assq-ref csv-lines 'rows) 'tip)
+

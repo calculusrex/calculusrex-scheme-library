@@ -1,0 +1,10 @@
+(define-module (calculusrex set)
+  :export (set-difference
+	   set
+	   set-)
+
+
+
+(define (set-difference xs ys)
+  (cond ((null? xs) ys)
+	((
