@@ -1,7 +1,7 @@
 (define-module (calculusrex set)
   :export (set
 	   makeset
-	   set-difference))
+	   set-diff))
 
 (use-modules (calculusrex list))
 
@@ -38,12 +38,30 @@
 					  (cdr lat)))))))
 
 
-(define (set-difference xs ys)
-  (cond ((null? xs) ys)
-	((in (car xs) ys)
-	 (set-difference (cdr xs)
-			 (remove-element (car xs)
-					 ys)))
-	(else
-	 (cons (car xs)
-	       (set-difference (cdr xs) ys)))))
+;; (define (set-difference xs ys)
+;;   (cond ((null? xs) ys)
+;; 	((in? (car xs) ys)
+;; 	 (set-difference (cdr xs)
+;; 			 (remove-element (car xs)
+;; 					 ys)))
+;; 	(else
+;; 	 (cons (car xs)
+;; 	       (set-difference (cdr xs) ys)))))
+
+
+(define (set-diff xs ys)
+  (let ((diff-data
+	 (reverse
+	  (let recur ((xs xs) (ys ys))
+	    (cond ((null? xs) (list ys))
+		  ((in? (car xs) ys)
+		   (recur (cdr xs)
+			  (remove-element (car xs)
+					  ys)))
+		  (else
+		   (cons (car xs)
+			 (recur (cdr xs) ys))))))))
+    (let ((set-b-diff (car diff-data))
+	  (set-a-diff (cdr diff-data)))
+      `((set-a . ,set-a-diff)
+	(set-b . ,set-b-diff)))))

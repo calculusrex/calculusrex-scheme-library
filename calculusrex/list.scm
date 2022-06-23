@@ -7,11 +7,15 @@
 	   remove-element
 	   multirember
 	   path-join
-	   frep))
+	   frep
+	   all-satisfying?
+	   all-different?
+	   flatten))
 
 ;; (load "/home/feral/.guile")
 
-(use-modules (ice-9 regex))
+(use-modules (ice-9 regex)
+	     (calculusrex functools))
 
 (define (in? x xs)
   (cond ((null? xs) #f)
@@ -79,3 +83,18 @@
 	      (cons string
 		    (frep pattern (cdr elements)))
 	      (frep pattern (cdr elements)))))))
+
+
+(define (all-satisfying? predicate)
+  (λ (xs)
+    (fold (λ (a b) (and a b))
+	  (map predicate xs))))
+
+(define (all-different? xs)
+  (cond ((null? xs) #t)
+	((in? (car xs) (cdr xs)) #f)
+	(else
+	 (all-different? (cdr xs)))))
+
+(define (flatten xss)
+  (apply append xss))

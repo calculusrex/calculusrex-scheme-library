@@ -3,10 +3,10 @@
 	     (calculusrex set)
 	     (calculusrex csv)
 	     (calculusrex json)
+	     (calculusrex alist)
 	     (ice-9 rdelim))
 
-;; (load "/home/feral/.guile")
-
+(define read-csv read-csv--)
 
 (define folder--date-saga "/home/feral/engineering/calculusrex-scheme-library/calculusrex/date-test-saga/ardeleanu--20-06-2022")
 (define folder--date-saga
@@ -25,28 +25,24 @@
 ;;     date_saga[key] = pd.read_csv(
 ;;         f'{date_saga__folder}/{date_saga__fnames[key]}')
 
-(define articole--date-saga
-  (read-csv (string-join (list folder--date-saga
-			       (assq-ref fnames--date-saga 'articole))
-			 "/")))
+(define date-saga
+  `((articole
+     . ,(read-csv (string-join (list folder--date-saga
+				     (ref fnames--date-saga
+					  'articole))
+			       "/")
+		  #\, #\newline))
+    (facturi
+     . ,(read-csv (string-join (list folder--date-saga
+				     (ref fnames--date-saga
+					  'facturi))
+			       "/")
+		  #\, #\newline))))
 
-(define facturi--date-saga
-  (read-csv (string-join (list folder--date-saga
-			       (assq-ref fnames--date-saga 'facturi))
-			 "/")))
-
-
-;; (assq-ref articole--date-saga 'header)
-;; (assq-ref (assq-ref articole--date-saga 'rows) 'pret_vanz)
-		   
-;;	    #:sep #\, #:strip-string-quotation #t  #:header-present #t))
-
-
-;; (read-json-file
 
 (define set-denumiri-articole
-  (set (assq-ref (df-columns articole--date-saga)
-		 'denumire)))
+  (set (ref date-saga 'articole 'columns "denumire")))
+
 
 (define set-denumiri-articole--from-python
   (assq-ref (parse-json (open-file
@@ -56,6 +52,7 @@
 			    "set_denumiri_date_saga.json")) "r"))
 	    'set))
 
+
 (define diff
-  (set-difference set-denumiri-articole
-		  set-denumiri-articole--from-python))
+  (set-diff set-denumiri-articole
+	    set-denumiri-articole--from-python))
