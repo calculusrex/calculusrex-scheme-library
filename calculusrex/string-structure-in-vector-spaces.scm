@@ -56,3 +56,7 @@
 (define diff
   (set-diff set-denumiri-articole
 	    set-denumiri-articole--from-python))
+
+
+(define checksum-pret-vanzare-articole-python 104764.6292)
+(define checksum-total-facturi-python 506081.47000000003)
